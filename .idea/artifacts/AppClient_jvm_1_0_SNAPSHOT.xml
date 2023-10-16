@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="AppClient-jvm-1.0-SNAPSHOT">
+    <output-path>$PROJECT_DIR$/AppClient/build/libs</output-path>
+    <root id="archive" name="AppClient-jvm-1.0-SNAPSHOT.jar">
+      <element id="module-output" name="AppClient.jvmMain" />
+    </root>
+  </artifact>
+</component>
