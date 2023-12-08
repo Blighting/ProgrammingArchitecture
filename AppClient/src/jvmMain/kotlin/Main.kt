@@ -1,35 +1,52 @@
-import entity.Message
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
+import io.ktor.utils.io.*
+import io.ktor.utils.io.core.*
+import java.io.File
 
 suspend fun main() {
-    tryToGetResponse()
-}
-
-suspend fun tryToGetResponse() {
     val client = HttpClient(CIO) {
         install(HttpRequestRetry) {
-            retryOnServerErrors(maxRetries = 6)
-            delayMillis { retry ->
-                retry * 10000L
+            retryIf(6) { _, response ->
+                response.status.value.let { it in 500..599 }
             }
+            delayMillis { retry -> retry * 2000L }
         }
-        install(ContentNegotiation){
+        install(ContentNegotiation) {
             json()
         }
     }
-    val response = client.post {
-        url("http://127.0.0.1:8080/sendMessage")
-        contentType(ContentType.Application.Json)
-        setBody(Message("Some message"))
+
+    while (true) {
+        val input = readLine()
+        if (input?.contains("sendMessage") == true) {
+            tryToSendMessage(input.split(" ")[1], client)
+        } else {
+            break
+        }
     }
-    println(response.bodyAsText())
-    client.close()
+}
+
+suspend fun downloadLogo(uri: String, client: HttpClient) {
+    val file = File.createTempFile("logo", "png")
+    client.prepareGet(Url(uri)).execute { httpResponse ->
+        val channel: ByteReadChannel = httpResponse.body()
+        while (!channel.isClosedForRead) {
+            val packet = channel.readRemaining(DEFAULT_BUFFER_SIZE.toLong())
+            while (!packet.isEmpty) {
+                val bytes = packet.readBytes()
+                file.appendBytes(bytes)
+                println("Received ${file.length()} bytes from ${httpResponse.contentLength()}")
+            }
+        }
+    }
 }
